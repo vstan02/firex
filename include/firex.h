@@ -22,6 +22,18 @@
 
 #include <inttypes.h>
 
-extern void frx_listen(const char* host, uint16_t port);
+typedef enum frx_status frx_status_t;
+typedef void(*frx_callback_t)(frx_status_t);
+
+enum frx_status {
+    FRX_SUCCESS,
+    FRX_SOCKERR,
+    FRX_SETOPTERR,
+    FRX_BINDERR,
+    FRX_LISTENERR,
+    FRX_CONNERR
+};
+
+extern void frx_listen(const char* host, uint16_t port, frx_callback_t callback);
 
 #endif // FIREX_FIREX_H

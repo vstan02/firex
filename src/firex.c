@@ -18,9 +18,60 @@
  */
 
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "firex.h"
 
-extern void frx_listen(const char* host, uint16_t port) {
-    printf(">>> http://%s:%hu", host, port);
+#define DEFAULT_RESPONSE \
+    "HTTP/1.1 200 OK\r\n" \
+    "Content-Type: text/html; charset=utf-8\r\n" \
+    "\r\n" \
+    "<h1>Hello World!</h1>"
+
+static void handle(int connection) {
+    char buffer[30000] = { 0 };
+    read(connection, buffer, 30000);
+    printf("%s\n", buffer);
+
+    sleep(5);
+
+    char* message = DEFAULT_RESPONSE;
+    write(connection, message, strlen(message));
+}
+
+extern void frx_listen(const char* host, uint16_t port, frx_callback_t callback) {
+    struct sockaddr_in address = {
+        .sin_family = AF_INET,
+        .sin_port = htons(port),
+        .sin_addr = { .s_addr = inet_addr(host) }
+    };
+
+    int listener = socket(AF_INET, SOCK_STREAM, 0);
+    if (listener < 0) {
+        return callback(FRX_SOCKERR);
+    }
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
+        return callback(FRX_SETOPTERR);
+    }
+    if (bind(listener, (struct sockaddr*)&address, sizeof(address)) != 0) {
+        return callback(FRX_BINDERR);
+    }
+    if (listen(listener, SOMAXCONN) != 0) {
+        return callback(FRX_LISTENERR);
+    }
+
+    callback(FRX_SUCCESS);
+    while (1) {
+        int connection = accept(listener, NULL, NULL);
+        if (connection < 0) {
+            return callback(FRX_CONNERR);
+        }
+
+        handle(connection);
+        close(connection);
+    }
 }
