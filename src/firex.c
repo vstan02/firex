@@ -24,7 +24,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "firex.h"
+#include "firex/firex.h"
+#include "firex/request.h"
 
 #define DEFAULT_RESPONSE \
     "HTTP/1.1 200 OK\r\n" \
@@ -32,14 +33,36 @@
     "\r\n" \
     "<h1>Hello World!</h1>"
 
+#define ERROR_RESPONSE \
+    "HTTP/1.1 404 Not found\r\n" \
+    "Content-Type: text/html; charset=utf-8\r\n" \
+    "\r\n" \
+    "<h1>Error 404: Page not found!</h1>"
+
 static void handle(int connection) {
-    char buffer[30000] = { 0 };
-    read(connection, buffer, 30000);
+    char buffer[BUFSIZ] = { 0 };
+    read(connection, buffer, BUFSIZ);
 
-    printf("%s\n", buffer);
+    frx_request_t request;
+    frx_request_init(&request, buffer);
 
-    char* message = DEFAULT_RESPONSE;
+    printf("--- Request ---\n");
+    printf("> version: %s\n", request.version);
+    printf("> url: %s\n", request.url);
+    printf("> method: %s\n", request.method);
+
+    printf("> headers:\n");
+    frx_headers_t* node = request.headers;
+    while (node != NULL) {
+        printf("--| %s: %s\n", node->name, node->value);
+        node = node->next;
+    }
+    printf("\n\n");
+
+    char* message = strcmp(request.url, "/") ? ERROR_RESPONSE : DEFAULT_RESPONSE;
     write(connection, message, strlen(message));
+
+    frx_request_free(&request);
 }
 
 extern frx_status_t frx_listen(const char* host, uint16_t port, frx_callback_t callback) {
