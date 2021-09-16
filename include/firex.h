@@ -23,7 +23,7 @@
 #include <inttypes.h>
 
 typedef enum frx_status frx_status_t;
-typedef void(*frx_callback_t)(frx_status_t);
+typedef void(*frx_callback_t)(void);
 
 enum frx_status {
     FRX_SUCCESS,
@@ -34,6 +34,6 @@ enum frx_status {
     FRX_CONNERR
 };
 
-extern void frx_listen(const char* host, uint16_t port, frx_callback_t callback);
+extern frx_status_t frx_listen(const char* host, uint16_t port, frx_callback_t callback);
 
 #endif // FIREX_FIREX_H

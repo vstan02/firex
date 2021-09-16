@@ -35,15 +35,14 @@
 static void handle(int connection) {
     char buffer[30000] = { 0 };
     read(connection, buffer, 30000);
-    printf("%s\n", buffer);
 
-    sleep(5);
+    printf("%s\n", buffer);
 
     char* message = DEFAULT_RESPONSE;
     write(connection, message, strlen(message));
 }
 
-extern void frx_listen(const char* host, uint16_t port, frx_callback_t callback) {
+extern frx_status_t frx_listen(const char* host, uint16_t port, frx_callback_t callback) {
     struct sockaddr_in address = {
         .sin_family = AF_INET,
         .sin_port = htons(port),
@@ -52,23 +51,26 @@ extern void frx_listen(const char* host, uint16_t port, frx_callback_t callback)
 
     int listener = socket(AF_INET, SOCK_STREAM, 0);
     if (listener < 0) {
-        return callback(FRX_SOCKERR);
+        return FRX_SOCKERR;
     }
-    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
-        return callback(FRX_SETOPTERR);
+    if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &(int) { 1 }, sizeof(int)) < 0) {
+        return FRX_SETOPTERR;
     }
-    if (bind(listener, (struct sockaddr*)&address, sizeof(address)) != 0) {
-        return callback(FRX_BINDERR);
+    if (bind(listener, (struct sockaddr*) &address, sizeof(address)) != 0) {
+        return FRX_BINDERR;
     }
     if (listen(listener, SOMAXCONN) != 0) {
-        return callback(FRX_LISTENERR);
+        return FRX_LISTENERR;
     }
 
-    callback(FRX_SUCCESS);
+    if (callback != NULL) {
+        callback();
+    }
+
     while (1) {
         int connection = accept(listener, NULL, NULL);
         if (connection < 0) {
-            return callback(FRX_CONNERR);
+            return FRX_CONNERR;
         }
 
         handle(connection);
